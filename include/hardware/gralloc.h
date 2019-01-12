@@ -63,7 +63,6 @@ __BEGIN_DECLS
 /**
  * Name of the graphics device to open
  */
-
 #define GRALLOC_HARDWARE_GPU0 "gpu0"
 
 enum {
@@ -132,10 +131,23 @@ enum {
      * handle this flag. */
     GRALLOC_USAGE_FOREIGN_BUFFERS       = 0x00200000,
 
+
     /* Mask of all flags which could be passed to a gralloc module for buffer
      * allocation. Any flags not in this mask do not need to be handled by
      * gralloc modules. */
     GRALLOC_USAGE_ALLOC_MASK            = ~(GRALLOC_USAGE_FOREIGN_BUFFERS),
+
+
+    GRALLOC_USAGE_ROT_MASK              = 0x0F000000,   // .KP : 目前实际上不用了, 但代码上有依赖.
+
+    /**
+     * mask for rk_nv12_10_color_space_field.
+     */
+    GRALLOC_USAGE_RK_COLOR_SPACES_MASK  = 0x0F000000,
+
+    GRALLOC_USAGE_TO_USE_SINGLE_BUFFER  = 0x08000000,
+    /* would like to use a fbdc(afbc) format. */
+    GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x04000000,
 
     /* implementation-specific private usage flags */
     GRALLOC_USAGE_PRIVATE_0             = 0x10000000,
@@ -158,6 +170,78 @@ enum {
 #endif
 };
 
+/**
+ * perform operation commands for rk gralloc.
+ * Helpers for using the non-type-safe perform() extension functions. Use
+ * these helpers instead of calling perform() directly in your application.
+ */
+enum {
+  /****************Implement****************/
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_PRIME_FD       = 0x08100002,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_ATTRIBUTES     = 0x08100004,
+  GRALLOC_MODULE_PERFORM_GET_INTERNAL_FORMAT       = 0x08100006,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_WIDTH          = 0x08100008,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_HEIGHT         = 0x0810000A,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_STRIDE         = 0x0810000C,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_BYTE_STRIDE    = 0x0810000E,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_FORMAT         = 0x08100010,
+  GRALLOC_MODULE_PERFORM_GET_HADNLE_SIZE           = 0x08100012,
+
+  /* perform(const struct gralloc_module_t *mod,
+   *     int op,
+   *     buffer_handle_t buffer,
+   *     int *usage);
+   */
+  GRALLOC_MODULE_PERFORM_GET_USAGE = 0x0feeff03,
+
+
+  /****************Not Implement****************/
+  GRALLOC_MODULE_PERFORM_GET_DRM_FD                = 0x08000002,
+  /* perform(const struct gralloc_module_t *mod,
+   *	   int op,
+   *	   int drm_fd,
+   *	   buffer_handle_t buffer,
+   *	   struct hwc_drm_bo *bo);
+   */
+  GRALLOC_MODULE_PERFORM_DRM_IMPORT = 0xffeeff00,
+
+  /* perform(const struct gralloc_module_t *mod,
+   *	   int op,
+   *	   buffer_handle_t buffer,
+   *	   void (*free_callback)(void *),
+   *	   void *priv);
+   */
+  GRALLOC_MODULE_PERFORM_SET_IMPORTER_PRIVATE = 0xffeeff01,
+
+  /* perform(const struct gralloc_module_t *mod,
+   *	   int op,
+   *	   buffer_handle_t buffer,
+   *	   void (*free_callback)(void *),
+   *	   void **priv);
+   */
+  GRALLOC_MODULE_PERFORM_GET_IMPORTER_PRIVATE = 0xffeeff02,
+};
+
+typedef int rk_nv12_10_color_space_t;
+#define RK_NV12_10_BT709                ( (rk_nv12_10_color_space_t)(0) )
+#define RK_NV12_10_COLOR_SPACE_DEFAULT  RK_NV12_10_BT709
+#define RK_NV12_10_BT2020               ( (rk_nv12_10_color_space_t)(1) )
+#define RK_NV12_10_HDR_10               ( (rk_nv12_10_color_space_t)(2) )
+#define RK_NV12_10_HDR_HLG              ( (rk_nv12_10_color_space_t)(3) )
+#define RK_NV12_10_HDR_DOLBY            ( (rk_nv12_10_color_space_t)(4) )
+
+inline rk_nv12_10_color_space_t get_rk_color_space_from_usage(int usage)
+{
+    return (usage & GRALLOC_USAGE_RK_COLOR_SPACES_MASK) >> 24;
+}
+
+inline void set_rk_color_space_into_usage(rk_nv12_10_color_space_t color_space,
+                                          int* usage)
+{
+    int usage_input = *usage;
+
+    *usage = (color_space << 24) | ( usage_input & ~GRALLOC_USAGE_RK_COLOR_SPACES_MASK);
+}
 /*****************************************************************************/
 
 /**
